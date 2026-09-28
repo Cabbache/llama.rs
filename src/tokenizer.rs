@@ -80,9 +80,17 @@ impl Tokenizer {
 	fn merge(&self, characters: &Vec<char>) -> Vec<String> {
 		let mut result: Vec<String> =
 			characters.into_iter().map(|c| c.to_string()).collect();
-		let indexes = result
+
+		let indexes: Vec<usize> = result
 			.windows(2)
-			.map(|&[a, b]| self.mapped_merges.get(a + b));
+			.filter_map(|ab| {
+				let k = format!("{} {}", ab[0], ab[1]);
+				println!("{}", k);
+				self.mapped_merges.get(&k)
+			})
+			.map(|x| *x)
+			.collect();
+		//println!("{:?}", self.mapped_merges);
 		println!("{:?}", indexes);
 		vec![]
 	}
@@ -90,8 +98,8 @@ impl Tokenizer {
 	pub fn tokenize(&self, prompt: &String) -> Vec<u32> {
 		let mapped = self.apply_mapping(prompt);
 		let merged = self.merge(&mapped);
-		println!("{:?}", mapped);
-		println!("{:?}", merged);
+		//println!("{:?}", mapped);
+		//println!("{:?}", merged);
 		vec![]
 	}
 }
