@@ -77,29 +77,34 @@ impl Tokenizer {
 		mapped_prompt
 	}
 
-	fn merge(&self, characters: &Vec<char>) -> Vec<String> {
+	fn chars_to_string_tokens(&self, characters: &Vec<char>) -> Vec<String> {
 		let mut result: Vec<String> =
 			characters.into_iter().map(|c| c.to_string()).collect();
 
-		let indexes: Vec<usize> = result
+		while let Some((pos, id)) = result
 			.windows(2)
-			.filter_map(|ab| {
+      .enumerate()
+			.filter_map(|(i, ab)| {
 				let k = format!("{} {}", ab[0], ab[1]);
-				println!("{}", k);
-				self.mapped_merges.get(&k)
+				self.mapped_merges.get(&k).map(|pos| (*pos, i))
 			})
-			.map(|x| *x)
-			.collect();
-		//println!("{:?}", self.mapped_merges);
-		println!("{:?}", indexes);
-		vec![]
+      .min_by(|(pos1, _),(post2, _)| pos1.cmp(post2)) {
+      
+      result[id] = result[id].clone() + &result[id+1];
+      result.remove(id+1);
+    }
+    result
 	}
 
-	pub fn tokenize(&self, prompt: &String) -> Vec<u32> {
-		let mapped = self.apply_mapping(prompt);
-		let merged = self.merge(&mapped);
-		//println!("{:?}", mapped);
-		//println!("{:?}", merged);
-		vec![]
+  fn string_tokens_to_vectors(&self, tokens: &Vec<String>) -> Vec<usize> {
+    tokens.into_iter().map(|token| *self.config.model.vocab.get(token).unwrap()).collect()
+  }
+
+	pub fn tokenize(&self, prompt: &String) -> Vec<usize> {
+		let mapped: Vec<char> = self.apply_mapping(prompt);
+		let tokens: Vec<String> = self.chars_to_string_tokens(&mapped);
+    //println!("{:?}", tokens);
+    let vector_tokens: Vec<usize> = self.string_tokens_to_vectors(&tokens);
+    vector_tokens
 	}
 }

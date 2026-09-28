@@ -64,6 +64,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let mut handle = stdin.lock();
 	handle.read_line(&mut prompt)?;
 
-	tokenizer.tokenize(&prompt);
+	println!("{:?}", tokenizer.tokenize(&prompt));
 	Ok(())
 }
