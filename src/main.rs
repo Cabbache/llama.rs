@@ -7,6 +7,7 @@ use std::io;
 use std::io::BufRead;
 use std::io::Read;
 use std::io::Seek;
+use std::iter::zip;
 
 use crate::tokenizer::Tokenizer;
 
@@ -51,10 +52,16 @@ pub struct Tensor {
 	row_size: usize,
 }
 
+fn add_vectors_in_place(v1: &mut Vec<f32>, v2: &[f32]) {
+	for (mut x, y) in zip(v1.iter_mut(), v2.iter()) {
+		*x += y
+	}
+}
+
 impl Tensor {
-  fn getrow(&self, idx: usize) -> &[f32] {
-    &self.values[self.row_size*idx..self.row_size*(idx+1)]
-  }
+	fn getrow(&self, idx: usize) -> &[f32] {
+		&self.values[self.row_size * idx..self.row_size * (idx + 1)]
+	}
 }
 
 impl TensorInfo {
@@ -114,12 +121,20 @@ fn main() -> Result<(), Box<dyn Error>> {
 	assert_eq!(wte.shape.len(), 2);
 	assert!(matches!(wte.dtype, WeightType::F32));
 
-  println!("loading tensor");
-  let wte_tensor = wte.load_tensor(&sf);
-  println!("done");
-  let row = wte_tensor.getrow(0);
-  println!("{}", row.len());
+	let wte_tensor = wte.load_tensor(&sf);
 
-	//sf.seek(pos)
+	let embeddings: Vec<Vec<f32>> = tokens
+		.iter()
+		.enumerate()
+		.map(|(index, token)| {
+			let mut row = wte_tensor.getrow(index).clone().to_vec();
+			let token_embedding = wte_tensor.getrow(*token);
+			add_vectors_in_place(&mut row, token_embedding);
+			row
+		})
+		.collect();
+
+	//println!("{:?}", embeddings);
+
 	Ok(())
 }
