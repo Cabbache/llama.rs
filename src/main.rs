@@ -6,6 +6,7 @@ use std::fs;
 use std::io;
 use std::io::BufRead;
 use std::io::Read;
+use std::io::Seek;
 
 use crate::tokenizer::Tokenizer;
 
@@ -43,16 +44,55 @@ pub struct TensorInfo {
 	data_offsets: [usize; 2],
 }
 
+#[derive(Debug)]
+pub struct Tensor {
+	values: Vec<f32>,
+	num_rows: usize,
+	row_size: usize,
+}
+
+impl Tensor {
+  fn getrow(&self, idx: usize) -> &[f32] {
+    &self.values[self.row_size*idx..self.row_size*(idx+1)]
+  }
+}
+
+impl TensorInfo {
+	fn load_tensor(&self, mut sf: &std::fs::File) -> Tensor {
+		let start = self.data_offsets[0];
+		let end = self.data_offsets[1];
+		assert_eq!(self.shape[0] * self.shape[1] * 4, end - start);
+		sf.seek(io::SeekFrom::Start(start as u64));
+		let mut raw_bytes: Vec<u8> = vec![0; end - start];
+		sf.read_exact(&mut raw_bytes);
+		let values = raw_bytes
+			.chunks_exact(4)
+			.map(TryInto::try_into)
+			.map(Result::unwrap)
+			.map(f32::from_le_bytes)
+			.collect();
+		Tensor {
+			values: values,
+			num_rows: self.shape[0],
+			row_size: self.shape[1],
+		}
+	}
+}
+
+const WTE_KEY: &str = "wte.weight";
+
 fn main() -> Result<(), Box<dyn Error>> {
 	let args = Cli::parse();
 	let mut sf: std::fs::File = fs::File::open(args.safetensors)?;
 	let tokenizer: Tokenizer = Tokenizer::from_file(args.tokenizer)?;
+
 	let mut buf: [u8; 8] = [0; 8];
 	sf.read_exact(&mut buf)?;
 	let jsonlen = usize::from_le_bytes(buf);
 	let mut newbuf: Vec<u8> = vec![0; jsonlen];
 	sf.read_exact(&mut newbuf)?;
 	let jsonstring = String::from_utf8(newbuf).expect("fuck");
+	//println!("{}", jsonstring);
 	let smeta: HashMap<String, SFMeta> =
 		serde_json::from_str(&jsonstring)?;
 
@@ -64,6 +104,22 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let mut handle = stdin.lock();
 	handle.read_line(&mut prompt)?;
 
-	println!("{:?}", tokenizer.tokenize(&prompt));
+	let tokens = tokenizer.tokenize(&prompt);
+	println!("{:?}", tokens);
+
+	let wte = match smeta.get(WTE_KEY).ok_or("missing wte")? {
+		SFMeta::Tensor(t) => t,
+		_ => panic!("unexpected format"),
+	};
+	assert_eq!(wte.shape.len(), 2);
+	assert!(matches!(wte.dtype, WeightType::F32));
+
+  println!("loading tensor");
+  let wte_tensor = wte.load_tensor(&sf);
+  println!("done");
+  let row = wte_tensor.getrow(0);
+  println!("{}", row.len());
+
+	//sf.seek(pos)
 	Ok(())
 }
