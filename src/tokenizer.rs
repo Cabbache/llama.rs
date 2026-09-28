@@ -42,6 +42,7 @@ pub struct TokenizerConfig {
 pub struct Tokenizer {
 	config: TokenizerConfig,
 	bytelevel_mapping: HashMap<u8, char>,
+	mapped_merges: HashMap<String, usize>,
 }
 
 impl Tokenizer {
@@ -49,9 +50,18 @@ impl Tokenizer {
 		let json_bytes = std::fs::read(name)?;
 		let json_string = String::from_utf8(json_bytes)?;
 		let tokenizer: TokenizerConfig = serde_json::from_str(&json_string)?;
+		let mapped_merges = tokenizer
+			.model
+			.merges
+			.iter()
+			.enumerate()
+			.map(|(i, s)| (s.clone(), i))
+			.collect();
+
 		Ok(Self {
 			config: tokenizer,
 			bytelevel_mapping: bytes_to_unicode(),
+			mapped_merges,
 		})
 	}
 
@@ -62,6 +72,11 @@ impl Tokenizer {
 			.map(|b| *self.bytelevel_mapping.get(b).unwrap())
 			.collect();
 		mapped_prompt
+	}
+
+	fn merge(characters: &Vec<char>) -> Vec<String> {
+		let mut result: Vec<String> = characters.into_iter().map(|c| c.to_string()).collect();
+		result.windows(2)
 	}
 
 	pub fn tokenize(&self, prompt: &String) -> Vec<u32> {
