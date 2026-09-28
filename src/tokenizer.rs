@@ -6,7 +6,8 @@ use std::ops::RangeInclusive;
 
 //https://github.com/openai/gpt-2/blob/master/src/encoder.py?utm_source=chatgpt.com#L9
 fn bytes_to_unicode() -> HashMap<u8, char> {
-	let ranges: Vec<RangeInclusive<char>> = vec!['!'..='~', '¡'..='¬', '®'..='ÿ'];
+	let ranges: Vec<RangeInclusive<char>> =
+		vec!['!'..='~', '¡'..='¬', '®'..='ÿ'];
 	let mut n = 0;
 	let mut values: Vec<u8> = ranges
 		.iter()
@@ -23,7 +24,8 @@ fn bytes_to_unicode() -> HashMap<u8, char> {
 			}
 		}
 	}
-	let c: Vec<char> = copy.iter().map(|&c| char::from_u32(c).unwrap()).collect();
+	let c: Vec<char> =
+		copy.iter().map(|&c| char::from_u32(c).unwrap()).collect();
 
 	zip(values, c).collect()
 }
@@ -49,7 +51,8 @@ impl Tokenizer {
 	pub fn from_file(name: String) -> Result<Self, Box<dyn Error>> {
 		let json_bytes = std::fs::read(name)?;
 		let json_string = String::from_utf8(json_bytes)?;
-		let tokenizer: TokenizerConfig = serde_json::from_str(&json_string)?;
+		let tokenizer: TokenizerConfig =
+			serde_json::from_str(&json_string)?;
 		let mapped_merges = tokenizer
 			.model
 			.merges
@@ -75,15 +78,18 @@ impl Tokenizer {
 	}
 
 	fn merge(&self, characters: &Vec<char>) -> Vec<String> {
-		let mut result: Vec<String> = characters.into_iter().map(|c| c.to_string()).collect();
-    let indexes = result.windows(2).map(|&[a,b]| self.mapped_merges.get(a+b));
-    println!("{:?}", indexes);
-    vec![]
+		let mut result: Vec<String> =
+			characters.into_iter().map(|c| c.to_string()).collect();
+		let indexes = result
+			.windows(2)
+			.map(|&[a, b]| self.mapped_merges.get(a + b));
+		println!("{:?}", indexes);
+		vec![]
 	}
 
 	pub fn tokenize(&self, prompt: &String) -> Vec<u32> {
 		let mapped = self.apply_mapping(prompt);
-    let merged = self.merge(&mapped);
+		let merged = self.merge(&mapped);
 		println!("{:?}", mapped);
 		println!("{:?}", merged);
 		vec![]

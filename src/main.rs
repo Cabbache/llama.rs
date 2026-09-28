@@ -53,7 +53,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let mut newbuf: Vec<u8> = vec![0; jsonlen];
 	sf.read_exact(&mut newbuf)?;
 	let jsonstring = String::from_utf8(newbuf).expect("fuck");
-	let smeta: HashMap<String, SFMeta> = serde_json::from_str(&jsonstring)?;
+	let smeta: HashMap<String, SFMeta> =
+		serde_json::from_str(&jsonstring)?;
 
 	print!("> ");
 	io::Write::flush(&mut io::stdout());
