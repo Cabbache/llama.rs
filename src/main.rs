@@ -19,6 +19,8 @@ struct Cli {
 	safetensors: String,
 	#[arg(required = true)]
 	tokenizer: String,
+	#[arg(short, long)]
+	dump: bool,
 }
 
 #[derive(Deserialize, Debug)]
@@ -86,6 +88,18 @@ impl TensorInfo {
 	}
 }
 
+#[derive(Deserialize, Debug)]
+pub struct SFObject(HashMap<String, SFMeta>);
+
+impl SFObject {
+	pub fn get_tensor_info(&self, key: &str) -> &TensorInfo {
+		match self.0.get(key) {
+			Some(SFMeta::Tensor(t)) => t,
+			_ => panic!("unexpected error when accessing key {}", key),
+		}
+	}
+}
+
 const WTE_KEY: &str = "wte.weight";
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -99,9 +113,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let mut newbuf: Vec<u8> = vec![0; jsonlen];
 	sf.read_exact(&mut newbuf)?;
 	let jsonstring = String::from_utf8(newbuf).expect("fuck");
-	//println!("{}", jsonstring);
-	let smeta: HashMap<String, SFMeta> =
-		serde_json::from_str(&jsonstring)?;
+	if args.dump {
+		println!("{}", jsonstring);
+		return Ok(());
+	}
+	let smeta: SFObject = serde_json::from_str(&jsonstring)?;
 
 	print!("> ");
 	io::Write::flush(&mut io::stdout());
@@ -114,10 +130,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let tokens = tokenizer.tokenize(&prompt);
 	println!("{:?}", tokens);
 
-	let wte = match smeta.get(WTE_KEY).ok_or("missing wte")? {
-		SFMeta::Tensor(t) => t,
-		_ => panic!("unexpected format"),
-	};
+	let wte = smeta.get_tensor_info(WTE_KEY);
+
 	assert_eq!(wte.shape.len(), 2);
 	assert!(matches!(wte.dtype, WeightType::F32));
 
@@ -134,7 +148,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 		})
 		.collect();
 
-	//println!("{:?}", embeddings);
+	println!("{:?}", embeddings);
 
 	Ok(())
 }
