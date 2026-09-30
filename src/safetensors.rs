@@ -1,8 +1,8 @@
 use serde::Deserialize;
-use std::io;
-use std::io::Seek;
-use std::io::Read;
 use std::collections::HashMap;
+use std::io;
+use std::io::Read;
+use std::io::Seek;
 
 #[derive(Deserialize, Debug)]
 pub struct SFObject(HashMap<String, SFMeta>);
@@ -44,9 +44,8 @@ impl SFObject {
 			Some(SFMeta::Tensor(t)) => t,
 			_ => panic!("unexpected error when accessing key {}", key),
 		};
-    assert_eq!(result.shape.len(), 2);
-    assert!(matches!(result.dtype, WeightType::F32));
-    result
+		assert!(matches!(result.dtype, WeightType::F32));
+		result
 	}
 }
 
@@ -60,7 +59,14 @@ impl TensorInfo {
 	pub fn load_tensor(&self, mut sf: &std::fs::File) -> Tensor {
 		let start = self.data_offsets[0];
 		let end = self.data_offsets[1];
-		assert_eq!(self.shape[0] * self.shape[1] * 4, end - start);
+		let product: usize = self
+			.shape
+			.iter()
+      .cloned()
+			.reduce(|acc, v| acc * v)
+			.expect("empty shape");
+		assert_eq!(product * 4, end - start);
+
 		sf.seek(io::SeekFrom::Start(start as u64));
 		let mut raw_bytes: Vec<u8> = vec![0; end - start];
 		sf.read_exact(&mut raw_bytes);
@@ -72,8 +78,19 @@ impl TensorInfo {
 			.collect();
 		Tensor {
 			values: values,
-			num_rows: self.shape[0],
-			row_size: self.shape[1],
+			num_rows: self.get_shape()[0],
+			row_size: self.get_shape()[1],
 		}
 	}
+
+  fn get_shape(&self) -> [usize; 2] {
+    match self.shape.len() {
+      2 => {
+        let (a,b) = (self.shape[0], self.shape[1]);
+        [a,b]
+      },
+      1 => [1, self.shape[0]],
+      _ => panic!("unexpected shape")
+    }
+  }
 }

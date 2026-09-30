@@ -1,3 +1,4 @@
+use crate::safetensors::SFObject;
 use clap::Parser;
 use core::error::Error;
 use std::fs;
@@ -5,12 +6,11 @@ use std::io;
 use std::io::BufRead;
 use std::io::Read;
 use std::iter::zip;
-use crate::safetensors::SFObject;
 
 use crate::tokenizer::Tokenizer;
 
-mod tokenizer;
 mod safetensors;
+mod tokenizer;
 
 #[derive(Parser, Debug)]
 struct Cli {
@@ -23,7 +23,7 @@ struct Cli {
 }
 
 fn add_vectors_in_place(v1: &mut Vec<f32>, v2: &[f32]) {
-	for (mut x, y) in zip(v1.iter_mut(), v2.iter()) {
+	for (x, y) in zip(v1.iter_mut(), v2.iter()) {
 		*x += y
 	}
 }
@@ -58,9 +58,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let tokens = tokenizer.tokenize(&prompt);
 	println!("{:?}", tokens);
 
-	let wte = smeta.get_tensor_info(WTE_KEY);
+	let wte_info = smeta.get_tensor_info(WTE_KEY);
 
-	let wte_tensor = wte.load_tensor(&sf);
+	let wte_tensor = wte_info.load_tensor(&sf);
 
 	let embeddings: Vec<Vec<f32>> = tokens
 		.iter()
@@ -72,6 +72,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 			row
 		})
 		.collect();
+
+	let h0_bias_info = smeta.get_tensor_info("h.0.ln_1.bias");
+	let h0_weight_info = smeta.get_tensor_info("h.0.ln_1.weight");
 
 	println!("{:?}", embeddings);
 
