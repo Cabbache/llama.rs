@@ -1,17 +1,16 @@
 use clap::Parser;
 use core::error::Error;
-use serde::Deserialize;
-use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::io::BufRead;
 use std::io::Read;
-use std::io::Seek;
 use std::iter::zip;
+use crate::safetensors::SFObject;
 
 use crate::tokenizer::Tokenizer;
 
 mod tokenizer;
+mod safetensors;
 
 #[derive(Parser, Debug)]
 struct Cli {
@@ -23,80 +22,9 @@ struct Cli {
 	dump: bool,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(untagged)]
-pub enum SFMeta {
-	Tensor(TensorInfo),
-	Metadata(MetaFormat),
-}
-
-#[derive(Deserialize, Debug)]
-pub struct MetaFormat {
-	format: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub enum WeightType {
-	F32,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct TensorInfo {
-	dtype: WeightType,
-	shape: Vec<usize>,
-	data_offsets: [usize; 2],
-}
-
-#[derive(Debug)]
-pub struct Tensor {
-	values: Vec<f32>,
-	num_rows: usize,
-	row_size: usize,
-}
-
 fn add_vectors_in_place(v1: &mut Vec<f32>, v2: &[f32]) {
 	for (mut x, y) in zip(v1.iter_mut(), v2.iter()) {
 		*x += y
-	}
-}
-
-impl Tensor {
-	fn getrow(&self, idx: usize) -> &[f32] {
-		&self.values[self.row_size * idx..self.row_size * (idx + 1)]
-	}
-}
-
-impl TensorInfo {
-	fn load_tensor(&self, mut sf: &std::fs::File) -> Tensor {
-		let start = self.data_offsets[0];
-		let end = self.data_offsets[1];
-		assert_eq!(self.shape[0] * self.shape[1] * 4, end - start);
-		sf.seek(io::SeekFrom::Start(start as u64));
-		let mut raw_bytes: Vec<u8> = vec![0; end - start];
-		sf.read_exact(&mut raw_bytes);
-		let values = raw_bytes
-			.chunks_exact(4)
-			.map(TryInto::try_into)
-			.map(Result::unwrap)
-			.map(f32::from_le_bytes)
-			.collect();
-		Tensor {
-			values: values,
-			num_rows: self.shape[0],
-			row_size: self.shape[1],
-		}
-	}
-}
-
-#[derive(Deserialize, Debug)]
-pub struct SFObject(HashMap<String, SFMeta>);
-
-impl SFObject {
-	pub fn get_tensor_info(&self, key: &str) -> &TensorInfo {
-		match self.0.get(key) {
-			Some(SFMeta::Tensor(t)) => t,
-			_ => panic!("unexpected error when accessing key {}", key),
-		}
 	}
 }
 
@@ -131,9 +59,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 	println!("{:?}", tokens);
 
 	let wte = smeta.get_tensor_info(WTE_KEY);
-
-	assert_eq!(wte.shape.len(), 2);
-	assert!(matches!(wte.dtype, WeightType::F32));
 
 	let wte_tensor = wte.load_tensor(&sf);
 

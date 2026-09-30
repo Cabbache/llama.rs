@@ -84,7 +84,7 @@ impl Tokenizer {
 		let mut result: Vec<String> =
 			characters.into_iter().map(|c| c.to_string()).collect();
 
-		while let Some((pos, id)) = result
+		while let Some((_, id)) = result
 			.windows(2)
 			.enumerate()
 			.filter_map(|(i, ab)| {
