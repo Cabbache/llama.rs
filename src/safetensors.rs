@@ -34,8 +34,8 @@ pub struct TensorInfo {
 #[derive(Debug)]
 pub struct Tensor {
 	values: Vec<f32>,
-	num_rows: usize,
-	row_size: usize,
+	pub num_rows: usize,
+	pub row_size: usize,
 }
 
 impl SFObject {
@@ -48,11 +48,7 @@ impl SFObject {
 		result
 	}
 
-	pub fn load_tensor(
-		&self,
-		key: &str,
-		sf: &std::fs::File,
-	) -> Tensor {
+	pub fn load_tensor(&self, key: &str, sf: &std::fs::File) -> Tensor {
 		let info = self.get_tensor_info(key);
 		info.load_tensor(sf)
 	}
