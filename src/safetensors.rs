@@ -7,6 +7,12 @@ use std::io::Seek;
 #[derive(Deserialize, Debug)]
 pub struct SFObject(HashMap<String, SFMeta>);
 
+#[derive(Debug)]
+pub struct SafeTensors {
+  pub jsonlen: u64,
+  pub header: SFObject,
+}
+
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
 pub enum SFMeta {
@@ -33,14 +39,14 @@ pub struct TensorInfo {
 
 #[derive(Debug)]
 pub struct Tensor {
-	values: Vec<f32>,
+	pub values: Vec<f32>,
 	pub num_rows: usize,
 	pub row_size: usize,
 }
 
-impl SFObject {
+impl SafeTensors {
 	pub fn get_tensor_info(&self, key: &str) -> &TensorInfo {
-		let result = match self.0.get(key) {
+		let result = match self.header.0.get(key) {
 			Some(SFMeta::Tensor(t)) => t,
 			_ => panic!("unexpected error when accessing key {}", key),
 		};
@@ -50,7 +56,7 @@ impl SFObject {
 
 	pub fn load_tensor(&self, key: &str, sf: &std::fs::File) -> Tensor {
 		let info = self.get_tensor_info(key);
-		info.load_tensor(sf)
+		info.load_tensor(sf, self.jsonlen + 8)
 	}
 }
 
@@ -61,7 +67,7 @@ impl Tensor {
 }
 
 impl TensorInfo {
-	pub fn load_tensor(&self, mut sf: &std::fs::File) -> Tensor {
+	fn load_tensor(&self, mut sf: &std::fs::File, offset: u64) -> Tensor {
 		let start = self.data_offsets[0];
 		let end = self.data_offsets[1];
 		let product: usize = self
@@ -72,7 +78,7 @@ impl TensorInfo {
 			.expect("empty shape");
 		assert_eq!(product * 4, end - start);
 
-		let _ = sf.seek(io::SeekFrom::Start(start as u64));
+		let _ = sf.seek(io::SeekFrom::Start(offset + start as u64));
 		let mut raw_bytes: Vec<u8> = vec![0; end - start];
 		let _ = sf.read_exact(&mut raw_bytes);
 		let values = raw_bytes
@@ -80,6 +86,7 @@ impl TensorInfo {
 			.map(TryInto::try_into)
 			.map(Result::unwrap)
 			.map(f32::from_le_bytes)
+			//.map(f32::from_be_bytes)
 			.collect();
 		Tensor {
 			values: values,
