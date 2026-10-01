@@ -47,6 +47,15 @@ impl SFObject {
 		assert!(matches!(result.dtype, WeightType::F32));
 		result
 	}
+
+	pub fn load_tensor(
+		&self,
+		key: &str,
+		sf: &std::fs::File,
+	) -> Tensor {
+		let info = self.get_tensor_info(key);
+		info.load_tensor(sf)
+	}
 }
 
 impl Tensor {
@@ -62,14 +71,14 @@ impl TensorInfo {
 		let product: usize = self
 			.shape
 			.iter()
-      .cloned()
+			.cloned()
 			.reduce(|acc, v| acc * v)
 			.expect("empty shape");
 		assert_eq!(product * 4, end - start);
 
-		sf.seek(io::SeekFrom::Start(start as u64));
+		let _ = sf.seek(io::SeekFrom::Start(start as u64));
 		let mut raw_bytes: Vec<u8> = vec![0; end - start];
-		sf.read_exact(&mut raw_bytes);
+		let _ = sf.read_exact(&mut raw_bytes);
 		let values = raw_bytes
 			.chunks_exact(4)
 			.map(TryInto::try_into)
@@ -83,14 +92,14 @@ impl TensorInfo {
 		}
 	}
 
-  fn get_shape(&self) -> [usize; 2] {
-    match self.shape.len() {
-      2 => {
-        let (a,b) = (self.shape[0], self.shape[1]);
-        [a,b]
-      },
-      1 => [1, self.shape[0]],
-      _ => panic!("unexpected shape")
-    }
-  }
+	fn get_shape(&self) -> [usize; 2] {
+		match self.shape.len() {
+			2 => {
+				let (a, b) = (self.shape[0], self.shape[1]);
+				[a, b]
+			}
+			1 => [1, self.shape[0]],
+			_ => panic!("unexpected shape"),
+		}
+	}
 }

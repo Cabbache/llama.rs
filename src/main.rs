@@ -5,12 +5,15 @@ use std::fs;
 use std::io;
 use std::io::BufRead;
 use std::io::Read;
-use std::iter::zip;
 
-use crate::tokenizer::Tokenizer;
-
+mod algebra;
 mod safetensors;
 mod tokenizer;
+
+use algebra::add_vectors_in_place;
+use algebra::vector_mean;
+
+use crate::tokenizer::Tokenizer;
 
 #[derive(Parser, Debug)]
 struct Cli {
@@ -22,18 +25,14 @@ struct Cli {
 	dump: bool,
 }
 
-fn add_vectors_in_place(v1: &mut Vec<f32>, v2: &[f32]) {
-	for (x, y) in zip(v1.iter_mut(), v2.iter()) {
-		*x += y
-	}
-}
-
 const WTE_KEY: &str = "wte.weight";
 
 fn main() -> Result<(), Box<dyn Error>> {
 	let args = Cli::parse();
-	let mut sf: std::fs::File = fs::File::open(args.safetensors)?;
+	let sf: std::fs::File = fs::File::open(args.safetensors)?;
 	let tokenizer: Tokenizer = Tokenizer::from_file(args.tokenizer)?;
+
+  return Ok(());
 
 	let mut buf: [u8; 8] = [0; 8];
 	sf.read_exact(&mut buf)?;
@@ -48,7 +47,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let smeta: SFObject = serde_json::from_str(&jsonstring)?;
 
 	print!("> ");
-	io::Write::flush(&mut io::stdout());
+	let _ = io::Write::flush(&mut io::stdout());
 
 	let mut prompt = String::new();
 	let stdin = io::stdin();
@@ -58,9 +57,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let tokens = tokenizer.tokenize(&prompt);
 	println!("{:?}", tokens);
 
-	let wte_info = smeta.get_tensor_info(WTE_KEY);
-
-	let wte_tensor = wte_info.load_tensor(&sf);
+	let wte_tensor = smeta.load_tensor(WTE_KEY, &sf);
 
 	let embeddings: Vec<Vec<f32>> = tokens
 		.iter()
@@ -73,10 +70,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 		})
 		.collect();
 
-	let h0_bias_info = smeta.get_tensor_info("h.0.ln_1.bias");
-	let h0_weight_info = smeta.get_tensor_info("h.0.ln_1.weight");
+	let h0_bias = smeta.load_tensor("h.0.ln_1.bias", &sf);
+	let h0_weight = smeta.load_tensor("h.0.ln_1.weight", &sf);
 
 	println!("{:?}", embeddings);
-
 	Ok(())
 }
