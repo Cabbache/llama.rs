@@ -12,6 +12,12 @@ pub fn vector_variance(v1: &Vec<f32>) -> f32 {
   vector_mean(&part1)
 }
 
+pub fn normalize_in_place(v: &mut Vec<f32>, layer_norm_epsilon: f32) {
+  let mean = vector_mean(&v);
+  let variance = vector_variance(&v);
+  v.iter_mut().map(|&mut v| (v-mean)/(variance+layer_norm_epsilon).powf(0.5));
+}
+
 pub fn vector_mean(v1: &Vec<f32>) -> f32 {
   let mut mean: f32 = 0.0;
   for (i,v) in v1.iter().enumerate() {
