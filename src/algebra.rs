@@ -2,6 +2,7 @@ use std::iter::zip;
 
 use crate::safetensors::Tensor;
 
+#[derive(Debug)]
 pub struct Matrix {
   pub data: Vec<f32>,//row,row,...
   pub shape: (usize, usize)//(num rows, row size)
@@ -49,13 +50,11 @@ pub fn normalize_in_place(v: &mut Vec<f32>, layer_norm_epsilon: f32) {
 
 pub fn vector_mean(v1: &Vec<f32>) -> f32 {
 	let mut mean: f32 = 0.0;
-  //println!("{:?}", v1);
 	for (i, v) in v1.iter().enumerate() {
 		let i_float = i as f32;
 		mean *= i_float;
 		mean += v;
 		mean /= i_float + 1.0;
-    //println!("{}", mean);
 	}
 	mean
 
@@ -75,9 +74,10 @@ pub fn matmul(m1: &Matrix, m2: &Matrix) -> Matrix {
     for col_idx in 0..m2.shape.1 {
       let mut total: f32 = 0.0;
       for i in 0..m1.shape.0 {
-        let product = m1.data[row_idx*m1.shape.0 + i] * m2.data[i*m2.shape.0 + m2.shape.1];
+        let product = m1.data[row_idx*m1.shape.0 + i] * m2.data[i*m2.shape.0 + col_idx];
         total += product;
       }
+      println!("{}", total);
       output.data[row_idx*m1.shape.0 + col_idx] = total;
     }
   }

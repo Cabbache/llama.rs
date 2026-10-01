@@ -93,7 +93,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let h0_weight_tensor = sf_file.load_tensor("h.0.ln_1.weight", &sf);
 	let h0_bias = h0_bias_tensor.getrow(0);
 	let h0_weight = h0_weight_tensor.getrow(0);
-  println!("{:?}", h0_weight);
 
 	for mut row in &mut embeddings {
 		normalize_in_place(row, config.layer_norm_epsilon);
@@ -108,7 +107,7 @@ fn main() -> Result<(), Box<dyn Error>> {
   
   let embedding_matrix = Matrix {
     data: flattened_embeddings,
-    shape: (embeddings.len(), embeddings[0].len()),
+    shape: (tokens.len(), wte_tensor.row_size),
   };
 
 	let h0_attn_weight_tensor =
@@ -119,6 +118,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
   let att_weight_matrix: Matrix = h0_attn_weight_tensor.into();
   let result = matmul(&embedding_matrix, &att_weight_matrix);
+
+  println!("{:?}", embedding_matrix);
+  //println!("{:?}", result);
 
 	println!(
 		"{} {}",
