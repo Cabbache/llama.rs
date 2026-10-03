@@ -18,7 +18,6 @@ pub fn vector_variance(v1: &Vec<f32>) -> f32 {
 pub fn normalize_in_place(v: &mut Vec<f32>, layer_norm_epsilon: f32) {
 	let mean = vector_mean(&v);
 	let variance = vector_variance(&v);
-	//println!("{} {}", mean, variance);
 	for x in v.iter_mut() {
 		*x = (*x - mean) / (variance + layer_norm_epsilon).powf(0.5)
 	}
@@ -54,9 +53,14 @@ pub fn matmul(m1: &Tensor, m2: &Tensor) -> Tensor {
 					* m2.values[i * m2.shape.0 + col_idx];
 				total += product;
 			}
-			println!("{}", total);
 			output.values[row_idx * m1.shape.0 + col_idx] = total;
 		}
 	}
 	output
+}
+
+pub fn compute_attention(Q: &Tensor, K: &Tensor, V: &Tensor) -> Tensor {
+	assert_eq!(Q.shape, K.shape);
+	assert_eq!(K.shape, V.shape);
+	todo!()
 }

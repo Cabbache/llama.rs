@@ -115,16 +115,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let h0_attn_bias_tensor =
 		sf_file.load_tensor("h.0.attn.c_attn.bias", &sf);
 
-	let result = matmul(&embedding_matrix, &h0_attn_weight_tensor);
+	let mut result = matmul(&embedding_matrix, &h0_attn_weight_tensor);
+	result.add_bias(&h0_attn_bias_tensor);
 
-	println!("{:?}", embedding_matrix);
-	//println!("{:?}", result);
-
-	println!(
-		"{} {}",
-		h0_attn_bias_tensor.shape.0, h0_attn_bias_tensor.shape.1
-	);
-
-	//println!("{:?}", embeddings);
+	println!("{:?}", result.shape);
+	println!("{:?}", h0_attn_bias_tensor.shape);
 	Ok(())
 }
