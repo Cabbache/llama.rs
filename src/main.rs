@@ -3,11 +3,12 @@ use crate::algebra::normalize_in_place;
 use crate::safetensors::SFObject;
 use clap::Parser;
 use core::error::Error;
+use safetensors::SafeTensors;
+use safetensors::Tensor;
 use std::fs;
 use std::io;
 use std::io::BufRead;
 use std::io::Read;
-use safetensors::SafeTensors;
 
 use serde::Deserialize;
 
@@ -17,7 +18,6 @@ mod tokenizer;
 
 use algebra::add_vectors_in_place;
 use algebra::vector_mean;
-use algebra::Matrix;
 
 use crate::tokenizer::Tokenizer;
 
@@ -60,10 +60,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 		return Ok(());
 	}
 	let smeta: SFObject = serde_json::from_str(&jsonstring)?;
-  let sf_file: SafeTensors = SafeTensors {
-    jsonlen,
-    header: smeta,
-  };
+	let sf_file: SafeTensors = SafeTensors {
+		jsonlen,
+		header: smeta,
+	};
 
 	print!("> ");
 	let _ = io::Write::flush(&mut io::stdout());
@@ -100,31 +100,29 @@ fn main() -> Result<(), Box<dyn Error>> {
 			row[i] = row[i] * h0_weight[i] + h0_bias[i];
 		}
 	}
-  let mut flattened_embeddings: Vec<f32> = Vec::new();
-  for row in embeddings.iter_mut() {
-    flattened_embeddings.append(&mut *row);
-  }
-  
-  let embedding_matrix = Matrix {
-    data: flattened_embeddings,
-    shape: (tokens.len(), wte_tensor.row_size),
-  };
+	let mut flattened_embeddings: Vec<f32> = Vec::new();
+	for row in embeddings.iter_mut() {
+		flattened_embeddings.append(&mut *row);
+	}
+
+	let embedding_matrix = Tensor {
+		values: flattened_embeddings,
+		shape: (tokens.len(), wte_tensor.shape.1),
+	};
 
 	let h0_attn_weight_tensor =
 		sf_file.load_tensor("h.0.attn.c_attn.weight", &sf);
 	let h0_attn_bias_tensor =
 		sf_file.load_tensor("h.0.attn.c_attn.bias", &sf);
 
+	let result = matmul(&embedding_matrix, &h0_attn_weight_tensor);
 
-  let att_weight_matrix: Matrix = h0_attn_weight_tensor.into();
-  let result = matmul(&embedding_matrix, &att_weight_matrix);
-
-  println!("{:?}", embedding_matrix);
-  //println!("{:?}", result);
+	println!("{:?}", embedding_matrix);
+	//println!("{:?}", result);
 
 	println!(
 		"{} {}",
-		h0_attn_bias_tensor.num_rows, h0_attn_bias_tensor.row_size
+		h0_attn_bias_tensor.shape.0, h0_attn_bias_tensor.shape.1
 	);
 
 	//println!("{:?}", embeddings);

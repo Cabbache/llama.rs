@@ -9,8 +9,8 @@ pub struct SFObject(HashMap<String, SFMeta>);
 
 #[derive(Debug)]
 pub struct SafeTensors {
-  pub jsonlen: u64,
-  pub header: SFObject,
+	pub jsonlen: u64,
+	pub header: SFObject,
 }
 
 #[derive(Deserialize, Debug)]
@@ -40,8 +40,7 @@ pub struct TensorInfo {
 #[derive(Debug)]
 pub struct Tensor {
 	pub values: Vec<f32>,
-	pub num_rows: usize,
-	pub row_size: usize,
+	pub shape: (usize, usize),
 }
 
 impl SafeTensors {
@@ -61,13 +60,24 @@ impl SafeTensors {
 }
 
 impl Tensor {
+	pub fn new(shape: (usize, usize)) -> Self {
+		Self {
+			values: vec![0.0; shape.0 * shape.1],
+			shape,
+		}
+	}
+
 	pub fn getrow(&self, idx: usize) -> &[f32] {
-		&self.values[self.row_size * idx..self.row_size * (idx + 1)]
+		&self.values[self.shape.1 * idx..self.shape.1 * (idx + 1)]
 	}
 }
 
 impl TensorInfo {
-	fn load_tensor(&self, mut sf: &std::fs::File, offset: u64) -> Tensor {
+	fn load_tensor(
+		&self,
+		mut sf: &std::fs::File,
+		offset: u64,
+	) -> Tensor {
 		let start = self.data_offsets[0];
 		let end = self.data_offsets[1];
 		let product: usize = self
@@ -90,18 +100,17 @@ impl TensorInfo {
 			.collect();
 		Tensor {
 			values: values,
-			num_rows: self.get_shape()[0],
-			row_size: self.get_shape()[1],
+			shape: self.get_shape(),
 		}
 	}
 
-	fn get_shape(&self) -> [usize; 2] {
+	fn get_shape(&self) -> (usize, usize) {
 		match self.shape.len() {
 			2 => {
 				let (a, b) = (self.shape[0], self.shape[1]);
-				[a, b]
+				(a, b)
 			}
-			1 => [1, self.shape[0]],
+			1 => (1, self.shape[0]),
 			_ => panic!("unexpected shape"),
 		}
 	}
