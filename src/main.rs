@@ -15,6 +15,8 @@ mod algebra;
 mod safetensors;
 mod tokenizer;
 
+use algebra::gelu_new;
+
 use crate::tokenizer::Tokenizer;
 
 #[derive(Parser, Debug)]
@@ -33,6 +35,7 @@ struct Cli {
 struct Config {
 	layer_norm_epsilon: f32,
 	n_head: usize,
+	activation_function: String,
 }
 
 const WTE_KEY: &str = "wte.weight";
@@ -138,7 +141,17 @@ fn main() -> Result<(), Box<dyn Error>> {
 	head_output.rowwise_mul(&h0_weight);
 	head_output.rowwise_add(&h0_bias);
 
-	println!("{:?}", head_output);
+	//mlp fc
+	let mlp_weight_fc = sf_file.load_tensor("h.0.mlp.c_fc.weight", &sf);
+	let mlp_bias_fc = sf_file.load_tensor("h.0.mlp.c_fc.bias", &sf);
+	let mut mlp_output = matmul(&head_output, &mlp_weight_fc);
+	mlp_output.rowwise_add(&mlp_bias_fc);
+
+	//gelu
+	assert_eq!(config.activation_function, "gelu_new");
+	mlp_output.values.iter_mut().for_each(|v| *v = gelu_new(*v));
+
+	println!("{:?}", mlp_output);
 
 	Ok(())
 }

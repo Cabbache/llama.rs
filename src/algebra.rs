@@ -1,3 +1,4 @@
+use core::f32::consts::{self, PI};
 use std::iter::zip;
 
 use crate::safetensors::Tensor;
@@ -51,10 +52,15 @@ pub fn matmul(m1: &Tensor, m2: &Tensor) -> Tensor {
 	output
 }
 
-/*
-pub fn compute_attention(Q: &Tensor, K: &Tensor, V: &Tensor) -> Tensor {
-	assert_eq!(Q.shape, K.shape);
-	assert_eq!(K.shape, V.shape);
-	todo!()
+pub fn tanh(x: f32) -> f32 {
+	let e = consts::E;
+	let pow2x = e.powf(2.0 * x);
+	(pow2x - 1.0) / (pow2x + 1.0)
 }
-*/
+
+pub fn gelu_new(x: f32) -> f32 {
+	let twoonpisqrt = (2.0 / PI).sqrt();
+	let tanh_input = x.powf(3f32) * 0.044715 * twoonpisqrt;
+	let oneplus = 1.0 + tanh(tanh_input);
+	0.5 * x * oneplus
+}

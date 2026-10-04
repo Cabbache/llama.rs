@@ -242,7 +242,7 @@ impl Tensor {
 			let slice = &mut self.values
 				[i * self.shape.1..(i + 1) * self.shape.1];
 			let mapped: Vec<f32> =
-				slice.iter().map(|v| (2.71828f32).powf(*v)).collect();
+				slice.iter().map(|v| f32::consts::E.powf(*v)).collect();
 			let total: f32 = mapped.iter().sum();
 			let mapped: Vec<f32> =
 				mapped.iter().map(|v| v / total).collect();
