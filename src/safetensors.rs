@@ -6,6 +6,9 @@ use std::io::Read;
 use std::io::Seek;
 use std::iter::zip;
 
+use crate::algebra::slice_mean;
+use crate::algebra::slice_variance;
+
 use crate::matmul;
 
 #[derive(Deserialize, Debug)]
@@ -78,14 +81,28 @@ impl Tensor {
 		}
 	}
 
-	pub fn add_bias(&mut self, bias: &Tensor) {
-		assert_eq!(bias.shape.0, 1);
-		assert_eq!(self.shape.1, bias.shape.1);
+	fn rowwise_update<F>(&mut self, other: &Tensor, op: F)
+	where
+		F: Fn(f32, f32) -> f32,
+	{
+		assert_eq!(other.shape.0, 1);
+		assert_eq!(self.shape.1, other.shape.1);
+
 		for i in 0..self.shape.0 {
 			for j in 0..self.shape.1 {
-				self.values[i * self.shape.1 + j] += bias.values[j];
+				let idx = i * self.shape.1 + j;
+				self.values[idx] =
+					op(self.values[idx], other.values[j]);
 			}
 		}
+	}
+
+	pub fn rowwise_add(&mut self, bias: &Tensor) {
+		self.rowwise_update(bias, |a, b| a + b);
+	}
+
+	pub fn rowwise_mul(&mut self, bias: &Tensor) {
+		self.rowwise_update(bias, |a, b| a * b);
 	}
 
 	pub fn get_heads(&self, n_head: usize) -> Vec<Head> {
@@ -183,6 +200,25 @@ impl Tensor {
 		self.shape = new_shape;
 	}
 
+	pub fn concat_rows(&mut self, t: &Tensor) {
+		assert_eq!(self.shape.1, t.shape.1);
+		self.shape = (self.shape.0 + t.shape.0, self.shape.1);
+		self.values.extend_from_slice(&t.values);
+	}
+
+	pub fn normalize(&mut self, layer_norm_epsilon: f32) {
+		for i in 0..self.shape.0 {
+			let slice = self.getrow(i);
+			let mean = slice_mean(&slice.values);
+			let variance = slice_variance(&slice.values);
+			for j in 0..self.shape.1 {
+				let x = self.values[i * self.shape.1 + j];
+				self.values[i * self.shape.1 + j] = (x - mean)
+					/ (variance + layer_norm_epsilon).powf(0.5);
+			}
+		}
+	}
+
 	pub fn scalar_multiply(&mut self, scalar: f32) {
 		self.values.iter_mut().for_each(|v| *v *= scalar);
 	}
@@ -197,8 +233,8 @@ impl Tensor {
 		}
 	}
 
-	pub fn getrow(&self, idx: usize) -> &[f32] {
-		&self.values[self.shape.1 * idx..self.shape.1 * (idx + 1)]
+	pub fn getrow(&self, idx: usize) -> Tensor {
+		self.slice((idx, 0), (idx + 1, self.shape.1))
 	}
 
 	pub fn softmax(&mut self) {

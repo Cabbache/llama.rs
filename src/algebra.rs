@@ -8,22 +8,14 @@ pub fn add_vectors_in_place(v1: &mut Vec<f32>, v2: &[f32]) {
 	}
 }
 
-pub fn vector_variance(v1: &Vec<f32>) -> f32 {
-	let mean = vector_mean(v1);
+pub fn slice_variance(v1: &[f32]) -> f32 {
+	let mean = slice_mean(v1);
 	let part1: Vec<f32> =
 		v1.iter().map(|v| (v - mean).powf(2f32)).collect();
-	vector_mean(&part1)
+	slice_mean(&part1)
 }
 
-pub fn normalize_in_place(v: &mut Vec<f32>, layer_norm_epsilon: f32) {
-	let mean = vector_mean(&v);
-	let variance = vector_variance(&v);
-	for x in v.iter_mut() {
-		*x = (*x - mean) / (variance + layer_norm_epsilon).powf(0.5)
-	}
-}
-
-pub fn vector_mean(v1: &Vec<f32>) -> f32 {
+pub fn slice_mean(v1: &[f32]) -> f32 {
 	let mut mean: f32 = 0.0;
 	for (i, v) in v1.iter().enumerate() {
 		let i_float = i as f32;

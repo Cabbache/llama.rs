@@ -1,5 +1,4 @@
 use crate::algebra::matmul;
-use crate::algebra::normalize_in_place;
 use crate::safetensors::SFObject;
 use clap::Parser;
 use core::error::Error;
@@ -15,8 +14,6 @@ use serde::Deserialize;
 mod algebra;
 mod safetensors;
 mod tokenizer;
-
-use algebra::add_vectors_in_place;
 
 use crate::tokenizer::Tokenizer;
 
@@ -78,45 +75,37 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 	let wte_tensor = sf_file.load_tensor(WTE_KEY, &sf);
 
-	let mut embeddings: Vec<Vec<f32>> = tokens
+	let mut embeddings: Tensor = tokens
 		.iter()
 		.enumerate()
 		.map(|(index, token)| {
-			let mut row = wte_tensor.getrow(index).to_vec();
+			let mut row = wte_tensor.getrow(index);
 			let token_embedding = wte_tensor.getrow(*token);
-			add_vectors_in_place(&mut row, token_embedding);
+			row.elementwise_add(&token_embedding);
 			row
 		})
-		.collect();
+		.reduce(|mut acc, v| {
+			acc.concat_rows(&v);
+			acc
+		})
+		.expect("???");
 
-	let h0_bias_tensor = sf_file.load_tensor("h.0.ln_1.bias", &sf);
-	let h0_weight_tensor = sf_file.load_tensor("h.0.ln_1.weight", &sf);
-	let h0_bias = h0_bias_tensor.getrow(0);
-	let h0_weight = h0_weight_tensor.getrow(0);
+	let input_block = embeddings.clone();
 
-	for row in &mut embeddings {
-		normalize_in_place(row, config.layer_norm_epsilon);
-		for i in 0..row.len() {
-			row[i] = row[i] * h0_weight[i] + h0_bias[i];
-		}
-	}
-	let mut flattened_embeddings: Vec<f32> = Vec::new();
-	for row in embeddings.iter_mut() {
-		flattened_embeddings.append(&mut *row);
-	}
+	let h0_bias = sf_file.load_tensor("h.0.ln_1.bias", &sf);
+	let h0_weight = sf_file.load_tensor("h.0.ln_1.weight", &sf);
 
-	let embedding_matrix = Tensor {
-		values: flattened_embeddings,
-		shape: (tokens.len(), wte_tensor.shape.1),
-	};
+	embeddings.normalize(config.layer_norm_epsilon);
+	embeddings.rowwise_mul(&h0_weight);
+	embeddings.rowwise_add(&h0_bias);
 
 	let h0_attn_weight_tensor =
 		sf_file.load_tensor("h.0.attn.c_attn.weight", &sf);
 	let h0_attn_bias_tensor =
 		sf_file.load_tensor("h.0.attn.c_attn.bias", &sf);
 
-	let mut result = matmul(&embedding_matrix, &h0_attn_weight_tensor);
-	result.add_bias(&h0_attn_bias_tensor);
+	let mut result = matmul(&embeddings, &h0_attn_weight_tensor);
+	result.rowwise_add(&h0_attn_bias_tensor);
 
 	let heads = result.get_heads(config.n_head);
 	let mut maybe_head_output: Option<Tensor> = None;
@@ -139,7 +128,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let h0_proj_bias = sf_file.load_tensor("h.0.attn.c_proj.bias", &sf);
 
 	head_output.matmul_inplace(&h0_proj_weight);
-	head_output.add_bias(&h0_proj_bias);
+	head_output.rowwise_add(&h0_proj_bias);
+	head_output.elementwise_add(&input_block);
 
 	println!("{:?}", head_output);
 
