@@ -113,8 +113,6 @@ impl Tensor {
 		let min_y = p1.1.min(p2.1);
 		let max_y = p1.1.max(p2.1);
 
-		println!("{:?} {:?}", p1, p2);
-		println!("{:?}", self.shape);
 		assert!(min_x >= 0);
 		assert!(min_y >= 0);
 		assert!(max_x <= self.shape.0);

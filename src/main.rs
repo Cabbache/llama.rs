@@ -121,11 +121,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let mut heads = result.get_heads();
 	for mut head in heads {
 		head.K.transpose_mut();
-		matmul(&head.Q, &head.K);
-		println!("{:?}", head.Q);
+		let attention = matmul(&head.Q, &head.K);
+		println!("{:?}", attention);
 	}
 
-	println!("{:?}", result.shape);
-	println!("{:?}", h0_attn_bias_tensor.shape);
 	Ok(())
 }
