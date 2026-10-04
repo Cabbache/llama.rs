@@ -4,6 +4,9 @@ use std::collections::HashMap;
 use std::io;
 use std::io::Read;
 use std::io::Seek;
+use std::iter::zip;
+
+use crate::matmul;
 
 #[derive(Deserialize, Debug)]
 pub struct SFObject(HashMap<String, SFMeta>);
@@ -38,7 +41,7 @@ pub struct TensorInfo {
 	data_offsets: [usize; 2],
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Tensor {
 	pub values: Vec<f32>,
 	pub shape: (usize, usize),
@@ -103,6 +106,12 @@ impl Tensor {
 		heads
 	}
 
+	pub fn elementwise_add(&mut self, t: &Tensor) {
+		assert_eq!(self.shape, t.shape);
+		zip(self.values.iter_mut(), t.values.iter())
+			.for_each(|(v, c)| *v += c);
+	}
+
 	pub fn slice(
 		&self,
 		p1: (usize, usize),
@@ -134,6 +143,12 @@ impl Tensor {
 			values: new_data,
 			shape: new_shape,
 		}
+	}
+
+	pub fn matmul_inplace(&mut self, t: &Tensor) {
+		let result = matmul(self, t);
+		self.values = result.values;
+		self.shape = result.shape;
 	}
 
 	pub fn transpose_mut(&mut self) {

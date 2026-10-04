@@ -118,8 +118,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let mut result = matmul(&embedding_matrix, &h0_attn_weight_tensor);
 	result.add_bias(&h0_attn_bias_tensor);
 
-	let mut heads = result.get_heads(config.n_head);
-	let mut head_output: Option<Tensor> = None;
+	let heads = result.get_heads(config.n_head);
+	let mut maybe_head_output: Option<Tensor> = None;
 	for mut head in heads {
 		head.key.transpose_mut();
 		let mut attention = matmul(&head.query, &head.key);
@@ -127,11 +127,19 @@ fn main() -> Result<(), Box<dyn Error>> {
 		attention.mask_diagonal();
 		attention.softmax();
 		let attention = matmul(&attention, &head.value);
-		match head_output {
+		match maybe_head_output {
 			Some(ref mut t) => t.concat_columns(&attention),
-			None => head_output = Some(attention),
+			None => maybe_head_output = Some(attention),
 		}
 	}
+	let mut head_output = maybe_head_output.expect("???");
+
+	let h0_proj_weight =
+		sf_file.load_tensor("h.0.attn.c_proj.weight", &sf);
+	let h0_proj_bias = sf_file.load_tensor("h.0.attn.c_proj.bias", &sf);
+
+	head_output.matmul_inplace(&h0_proj_weight);
+	head_output.add_bias(&h0_proj_bias);
 
 	println!("{:?}", head_output);
 

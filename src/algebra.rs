@@ -59,8 +59,10 @@ pub fn matmul(m1: &Tensor, m2: &Tensor) -> Tensor {
 	output
 }
 
+/*
 pub fn compute_attention(Q: &Tensor, K: &Tensor, V: &Tensor) -> Tensor {
 	assert_eq!(Q.shape, K.shape);
 	assert_eq!(K.shape, V.shape);
 	todo!()
 }
+*/
