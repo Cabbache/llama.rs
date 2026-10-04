@@ -279,7 +279,6 @@ impl TensorInfo {
 			.map(TryInto::try_into)
 			.map(Result::unwrap)
 			.map(f32::from_le_bytes)
-			//.map(f32::from_be_bytes)
 			.collect();
 		Tensor {
 			values: values,

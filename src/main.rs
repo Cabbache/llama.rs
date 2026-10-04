@@ -132,6 +132,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let h0_proj_bias = sf_file.load_tensor("h.0.attn.c_proj.bias", &sf);
 	head_output.matmul_inplace(&h0_proj_weight);
 	head_output.rowwise_add(&h0_proj_bias);
+
+	let before_residual_1 = head_output.clone();
+
+	//residual connection 1
 	head_output.elementwise_add(&input_block);
 
 	//layernorm 2
@@ -150,6 +154,15 @@ fn main() -> Result<(), Box<dyn Error>> {
 	//gelu
 	assert_eq!(config.activation_function, "gelu_new");
 	mlp_output.values.iter_mut().for_each(|v| *v = gelu_new(*v));
+
+	//mlp
+	let mlp_weight = sf_file.load_tensor("h.0.mlp.c_proj.weight", &sf);
+	let mlp_bias = sf_file.load_tensor("h.0.mlp.c_proj.bias", &sf);
+	let mut mlp_output = matmul(&mlp_output, &mlp_weight);
+	mlp_output.rowwise_add(&mlp_bias);
+
+	//residual connection 2
+	mlp_output.elementwise_add(&before_residual_1);
 
 	println!("{:?}", mlp_output);
 
