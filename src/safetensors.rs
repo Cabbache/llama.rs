@@ -149,6 +149,25 @@ impl Tensor {
 		self.shape = (b, a);
 	}
 
+	pub fn concat_columns(&mut self, t: &Tensor) {
+		assert_eq!(self.shape.0, t.shape.0);
+		let new_shape = (self.shape.0, self.shape.1 + t.shape.1);
+		let tmp = self.values.clone();
+		self.values = vec![0.0; self.area() + t.area()];
+		for i in 0..self.shape.0 {
+			for j in 0..self.shape.1 {
+				self.values[i * new_shape.1 + j] =
+					tmp[i * self.shape.1 + j];
+			}
+
+			for j in 0..t.shape.1 {
+				self.values[i * new_shape.1 + self.shape.1 + j] =
+					t.values[i * t.shape.1 + j];
+			}
+		}
+		self.shape = new_shape;
+	}
+
 	pub fn scalar_multiply(&mut self, scalar: f32) {
 		self.values.iter_mut().for_each(|v| *v *= scalar);
 	}

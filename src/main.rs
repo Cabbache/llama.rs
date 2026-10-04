@@ -17,7 +17,6 @@ mod safetensors;
 mod tokenizer;
 
 use algebra::add_vectors_in_place;
-use algebra::vector_mean;
 
 use crate::tokenizer::Tokenizer;
 
@@ -95,7 +94,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let h0_bias = h0_bias_tensor.getrow(0);
 	let h0_weight = h0_weight_tensor.getrow(0);
 
-	for mut row in &mut embeddings {
+	for row in &mut embeddings {
 		normalize_in_place(row, config.layer_norm_epsilon);
 		for i in 0..row.len() {
 			row[i] = row[i] * h0_weight[i] + h0_bias[i];
@@ -120,13 +119,21 @@ fn main() -> Result<(), Box<dyn Error>> {
 	result.add_bias(&h0_attn_bias_tensor);
 
 	let mut heads = result.get_heads(config.n_head);
+	let mut head_output: Option<Tensor> = None;
 	for mut head in heads {
 		head.key.transpose_mut();
 		let mut attention = matmul(&head.query, &head.key);
 		attention.scalar_multiply(1.0 / (64f32).sqrt());
 		attention.mask_diagonal();
-		println!("{:?}", attention);
+		attention.softmax();
+		let attention = matmul(&attention, &head.value);
+		match head_output {
+			Some(ref mut t) => t.concat_columns(&attention),
+			None => head_output = Some(attention),
+		}
 	}
+
+	println!("{:?}", head_output);
 
 	Ok(())
 }
