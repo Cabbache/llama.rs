@@ -1,3 +1,4 @@
+use core::f32;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::io;
@@ -45,9 +46,9 @@ pub struct Tensor {
 
 #[derive(Debug)]
 pub struct Head {
-	pub Q: Tensor,
-	pub K: Tensor,
-	pub V: Tensor,
+	pub query: Tensor,
+	pub key: Tensor,
+	pub value: Tensor,
 }
 
 impl SafeTensors {
@@ -84,19 +85,19 @@ impl Tensor {
 		}
 	}
 
-	pub fn get_heads(&self) -> Vec<Head> {
+	pub fn get_heads(&self, n_head: usize) -> Vec<Head> {
 		let mut heads: Vec<Head> = Vec::new();
-		let Q = self.slice((0, 0), (self.shape.0, 768));
-		let K = self.slice((0, 768), (self.shape.0, 768 * 2));
-		let V = self.slice((0, 768 * 2), (self.shape.0, 768 * 3));
+		let query = self.slice((0, 0), (self.shape.0, 768));
+		let key = self.slice((0, 768), (self.shape.0, 768 * 2));
+		let value = self.slice((0, 768 * 2), (self.shape.0, 768 * 3));
 
-		for i in 0..12 {
+		for i in 0..n_head {
 			let sl_p1 = (0, i * 64);
 			let sl_p2 = (self.shape.0, (i + 1) * 64);
 			heads.push(Head {
-				Q: Q.slice(sl_p1, sl_p2),
-				K: K.slice(sl_p1, sl_p2),
-				V: V.slice(sl_p1, sl_p2),
+				query: query.slice(sl_p1, sl_p2),
+				key: key.slice(sl_p1, sl_p2),
+				value: value.slice(sl_p1, sl_p2),
 			});
 		}
 		heads
@@ -113,8 +114,6 @@ impl Tensor {
 		let min_y = p1.1.min(p2.1);
 		let max_y = p1.1.max(p2.1);
 
-		assert!(min_x >= 0);
-		assert!(min_y >= 0);
 		assert!(max_x <= self.shape.0);
 		assert!(max_y <= self.shape.1);
 
@@ -148,6 +147,20 @@ impl Tensor {
 		}
 		let (a, b) = self.shape;
 		self.shape = (b, a);
+	}
+
+	pub fn scalar_multiply(&mut self, scalar: f32) {
+		self.values.iter_mut().for_each(|v| *v *= scalar);
+	}
+
+	//used to stop future tokens from relating to previous tokens.
+	pub fn mask_diagonal(&mut self) {
+		assert_eq!(self.shape.0, self.shape.1);
+		for i in 0..self.shape.0 {
+			for j in (i + 1)..self.shape.1 {
+				self.values[i * self.shape.1 + j] = f32::NEG_INFINITY;
+			}
+		}
 	}
 
 	pub fn getrow(&self, idx: usize) -> &[f32] {

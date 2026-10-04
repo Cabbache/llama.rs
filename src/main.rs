@@ -36,6 +36,7 @@ struct Cli {
 #[derive(Deserialize, Debug)]
 struct Config {
 	layer_norm_epsilon: f32,
+	n_head: usize,
 }
 
 const WTE_KEY: &str = "wte.weight";
@@ -118,10 +119,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let mut result = matmul(&embedding_matrix, &h0_attn_weight_tensor);
 	result.add_bias(&h0_attn_bias_tensor);
 
-	let mut heads = result.get_heads();
+	let mut heads = result.get_heads(config.n_head);
 	for mut head in heads {
-		head.K.transpose_mut();
-		let attention = matmul(&head.Q, &head.K);
+		head.key.transpose_mut();
+		let mut attention = matmul(&head.query, &head.key);
+		attention.scalar_multiply(1.0 / (64f32).sqrt());
+		attention.mask_diagonal();
 		println!("{:?}", attention);
 	}
 
