@@ -90,11 +90,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 		})
 		.expect("???");
 
+	//keep copy because we need it later unchanged
 	let input_block = embeddings.clone();
 
-	let h0_bias = sf_file.load_tensor("h.0.ln_1.bias", &sf);
+	//layernorm 1
 	let h0_weight = sf_file.load_tensor("h.0.ln_1.weight", &sf);
-
+	let h0_bias = sf_file.load_tensor("h.0.ln_1.bias", &sf);
 	embeddings.normalize(config.layer_norm_epsilon);
 	embeddings.rowwise_mul(&h0_weight);
 	embeddings.rowwise_add(&h0_bias);
@@ -126,10 +127,16 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let h0_proj_weight =
 		sf_file.load_tensor("h.0.attn.c_proj.weight", &sf);
 	let h0_proj_bias = sf_file.load_tensor("h.0.attn.c_proj.bias", &sf);
-
 	head_output.matmul_inplace(&h0_proj_weight);
 	head_output.rowwise_add(&h0_proj_bias);
 	head_output.elementwise_add(&input_block);
+
+	//layernorm 2
+	let h0_weight = sf_file.load_tensor("h.0.ln_2.weight", &sf);
+	let h0_bias = sf_file.load_tensor("h.0.ln_2.bias", &sf);
+	head_output.normalize(config.layer_norm_epsilon);
+	head_output.rowwise_mul(&h0_weight);
+	head_output.rowwise_add(&h0_bias);
 
 	println!("{:?}", head_output);
 
