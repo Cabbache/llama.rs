@@ -86,13 +86,13 @@ impl Tensor {
 
 	pub fn get_heads(&self) -> Vec<Head> {
 		let mut heads: Vec<Head> = Vec::new();
-		let Q = self.slice((0, 0), (self.shape.0, 764));
-		let K = self.slice((0, 764), (self.shape.0, 764 * 2));
-		let V = self.slice((0, 764 * 2), (self.shape.0, 764 * 3));
+		let Q = self.slice((0, 0), (self.shape.0, 768));
+		let K = self.slice((0, 768), (self.shape.0, 768 * 2));
+		let V = self.slice((0, 768 * 2), (self.shape.0, 768 * 3));
 
 		for i in 0..12 {
 			let sl_p1 = (0, i * 64);
-			let sl_p2 = (0, (i + 1) * 64);
+			let sl_p2 = (self.shape.0, (i + 1) * 64);
 			heads.push(Head {
 				Q: Q.slice(sl_p1, sl_p2),
 				K: K.slice(sl_p1, sl_p2),
@@ -113,10 +113,12 @@ impl Tensor {
 		let min_y = p1.1.min(p2.1);
 		let max_y = p1.1.max(p2.1);
 
-		assert!(min_x > 0);
-		assert!(min_y > 0);
-		assert!(max_x < self.shape.0);
-		assert!(max_y < self.shape.1);
+		println!("{:?} {:?}", p1, p2);
+		println!("{:?}", self.shape);
+		assert!(min_x >= 0);
+		assert!(min_y >= 0);
+		assert!(max_x <= self.shape.0);
+		assert!(max_y <= self.shape.1);
 
 		let new_shape = (max_x - min_x, max_y - min_y);
 		assert!(new_shape.0 > 0);
@@ -125,7 +127,7 @@ impl Tensor {
 		let mut new_data =
 			Vec::with_capacity(new_shape.0 * new_shape.1);
 
-		for i in 0..new_shape.1 {
+		for i in 0..new_shape.0 {
 			let base = (i + min_x) * self.shape.1 + min_y;
 			let slice = self.values[base..base + new_shape.1].to_vec();
 			new_data.extend(slice);
@@ -146,6 +148,8 @@ impl Tensor {
 				ctr += 1;
 			}
 		}
+		let (a, b) = self.shape;
+		self.shape = (b, a);
 	}
 
 	pub fn getrow(&self, idx: usize) -> &[f32] {

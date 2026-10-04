@@ -118,6 +118,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let mut result = matmul(&embedding_matrix, &h0_attn_weight_tensor);
 	result.add_bias(&h0_attn_bias_tensor);
 
+	let mut heads = result.get_heads();
+	for mut head in heads {
+		head.K.transpose_mut();
+		matmul(&head.Q, &head.K);
+		println!("{:?}", head.Q);
+	}
+
 	println!("{:?}", result.shape);
 	println!("{:?}", h0_attn_bias_tensor.shape);
 	Ok(())
