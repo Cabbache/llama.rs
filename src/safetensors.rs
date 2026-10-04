@@ -167,6 +167,19 @@ impl Tensor {
 		&self.values[self.shape.1 * idx..self.shape.1 * (idx + 1)]
 	}
 
+	pub fn softmax(&mut self) {
+		for i in 0..self.shape.0 {
+			let slice = &mut self.values
+				[i * self.shape.1..(i + 1) * self.shape.1];
+			let mapped: Vec<f32> =
+				slice.iter().map(|v| (2.71828f32).powf(*v)).collect();
+			let total: f32 = mapped.iter().sum();
+			let mapped: Vec<f32> =
+				mapped.iter().map(|v| v / total).collect();
+			slice.copy_from_slice(&mapped);
+		}
+	}
+
 	pub fn area(&self) -> usize {
 		self.shape.0 * self.shape.1
 	}
