@@ -1,4 +1,5 @@
 use crate::algebra::matmul;
+use crate::attention::layernorm;
 use crate::safetensors::SFObject;
 use clap::Parser;
 use core::error::Error;
@@ -100,6 +101,15 @@ fn main() -> Result<(), Box<dyn Error>> {
 		embeddings = attention(embeddings, &config, &sf_file, &sf, 0);
 		println!("{}", i);
 	}
+
+	let ln_f_weight = sf_file.load_tensor("ln_f.weight", &sf);
+	let ln_f_bias = sf_file.load_tensor("ln_f.bias", &sf);
+	layernorm(
+		&mut embeddings,
+		&ln_f_weight,
+		&ln_f_bias,
+		config.layer_norm_epsilon,
+	);
 
 	Ok(())
 }
