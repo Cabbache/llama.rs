@@ -96,7 +96,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 	//keep copy because we need it later unchanged
 	let input_block = embeddings.clone();
 
-	attention(embeddings, &config, &sf_file, &sf, 0);
+	for i in 0..=10 {
+		embeddings = attention(embeddings, &config, &sf_file, &sf, 0);
+		println!("{}", i);
+	}
 
 	Ok(())
 }

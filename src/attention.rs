@@ -28,10 +28,8 @@ pub fn attention(
 		&layername(block_number, "attn.c_attn.weight"),
 		&sf,
 	);
-	let h0_attn_bias_tensor = sf_file.load_tensor(
-		&layername(block_number, "h.0.attn.c_attn.bias"),
-		&sf,
-	);
+	let h0_attn_bias_tensor = sf_file
+		.load_tensor(&layername(block_number, "attn.c_attn.bias"), &sf);
 
 	let mut result = matmul(&input, &h0_attn_weight_tensor);
 	result.rowwise_add(&h0_attn_bias_tensor);
@@ -69,8 +67,8 @@ pub fn attention(
 	//layernorm 2
 	let h0_weight = sf_file
 		.load_tensor(&layername(block_number, "ln_2.weight"), &sf);
-	let h0_bias = sf_file
-		.load_tensor(&layername(block_number, "h.0.ln_2.bias"), &sf);
+	let h0_bias =
+		sf_file.load_tensor(&layername(block_number, "ln_2.bias"), &sf);
 	head_output.normalize(config.layer_norm_epsilon);
 	head_output.rowwise_mul(&h0_weight);
 	head_output.rowwise_add(&h0_bias);
