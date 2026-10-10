@@ -46,14 +46,22 @@ pub fn matmul(m1: &Tensor, m2: &Tensor) -> Tensor {
 }
 
 pub fn tanh(x: f32) -> f32 {
-	let e = consts::E;
-	let pow2x = e.powf(2.0 * x);
-	(pow2x - 1.0) / (pow2x + 1.0)
+	if x > 5.0 {
+		return 1.0;
+	} else if x < 5.0 {
+		return -1.0;
+	} else {
+		let e = consts::E;
+		let pow2x = e.powf(2.0 * x);
+		let out = (pow2x - 1.0) / (pow2x + 1.0);
+		out
+	}
 }
 
 pub fn gelu_new(x: f32) -> f32 {
 	let twoonpisqrt = (2.0 / PI).sqrt();
 	let tanh_input = x.powf(3f32) * 0.044715 * twoonpisqrt;
 	let oneplus = 1.0 + tanh(tanh_input);
-	0.5 * x * oneplus
+	let out = 0.5 * x * oneplus;
+	out
 }
