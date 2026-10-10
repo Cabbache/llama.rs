@@ -75,54 +75,60 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let mut handle = stdin.lock();
 	handle.read_line(&mut prompt)?;
 
-	let tokens = tokenizer.tokenize(&prompt);
-	println!("{:?}", tokens);
+	loop {
+		let tokens = tokenizer.tokenize(&prompt);
+		println!("{:?}", tokens);
 
-	let mut wte_tensor = sf_file.load_tensor(WTE_KEY, &sf);
-	let mut wpe_tensor = sf_file.load_tensor(WPE_KEY, &sf);
+		let mut wte_tensor = sf_file.load_tensor(WTE_KEY, &sf);
+		let mut wpe_tensor = sf_file.load_tensor(WPE_KEY, &sf);
 
-	let mut embeddings: Tensor = tokens
-		.iter()
-		.enumerate()
-		.map(|(position, token_id)| {
-			let mut row = wte_tensor.getrow(*token_id);
-			let token_embedding = wpe_tensor.getrow(position);
-			row.elementwise_add(&token_embedding);
-			row
-		})
-		.reduce(|mut acc, v| {
-			acc.concat_rows(&v);
-			acc
-		})
-		.expect("???");
+		let mut embeddings: Tensor = tokens
+			.iter()
+			.enumerate()
+			.map(|(position, token_id)| {
+				let mut row = wte_tensor.getrow(*token_id);
+				let token_embedding = wpe_tensor.getrow(position);
+				row.elementwise_add(&token_embedding);
+				row
+			})
+			.reduce(|mut acc, v| {
+				acc.concat_rows(&v);
+				acc
+			})
+			.expect("???");
 
-	//process all attention blocks
-	for i in 0..=11 {
-		embeddings = attention(embeddings, &config, &sf_file, &sf, i);
-		println!("{}", i);
+		//process all attention blocks
+		for i in 0..=11 {
+			embeddings =
+				attention(embeddings, &config, &sf_file, &sf, i);
+			println!("{}", i);
+		}
+
+		let ln_f_weight = sf_file.load_tensor("ln_f.weight", &sf);
+		let ln_f_bias = sf_file.load_tensor("ln_f.bias", &sf);
+		layernorm(
+			&mut embeddings,
+			&ln_f_weight,
+			&ln_f_bias,
+			config.layer_norm_epsilon,
+		);
+
+		let lastrow = embeddings.getrow(embeddings.shape.0 - 1);
+		wte_tensor.transpose_mut();
+		let logits = matmul(&lastrow, &wte_tensor);
+		println!("{:?}", logits);
+		let (next_token_id, _) = logits
+			.values
+			.iter()
+			.enumerate()
+			.max_by(|(_, a), (_, b)| {
+				a.partial_cmp(b).expect("f32 issue")
+			})
+			.expect("no tokens");
+
+		let next = tokenizer.decode_token(next_token_id);
+		println!("{}", next);
+		prompt += &next;
 	}
-
-	let ln_f_weight = sf_file.load_tensor("ln_f.weight", &sf);
-	let ln_f_bias = sf_file.load_tensor("ln_f.bias", &sf);
-	layernorm(
-		&mut embeddings,
-		&ln_f_weight,
-		&ln_f_bias,
-		config.layer_norm_epsilon,
-	);
-
-	let lastrow = embeddings.getrow(embeddings.shape.0 - 1);
-	wte_tensor.transpose_mut();
-	let logits = matmul(&lastrow, &wte_tensor);
-	println!("{:?}", logits);
-	let (next_token_id, _) = logits
-		.values
-		.iter()
-		.enumerate()
-		.max_by(|(_, a), (_, b)| a.partial_cmp(b).expect("f32 issue"))
-		.expect("no tokens");
-
-	let next = tokenizer.decode_token(next_token_id);
-	println!("{}", next);
 	Ok(())
 }
