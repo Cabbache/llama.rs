@@ -40,6 +40,7 @@ struct Config {
 }
 
 const WTE_KEY: &str = "wte.weight";
+const WPE_KEY: &str = "wpe.weight";
 
 fn main() -> Result<(), Box<dyn Error>> {
 	let args = Cli::parse();
@@ -78,13 +79,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 	println!("{:?}", tokens);
 
 	let mut wte_tensor = sf_file.load_tensor(WTE_KEY, &sf);
+	let mut wpe_tensor = sf_file.load_tensor(WPE_KEY, &sf);
 
 	let mut embeddings: Tensor = tokens
 		.iter()
 		.enumerate()
-		.map(|(index, token)| {
-			let mut row = wte_tensor.getrow(index);
-			let token_embedding = wte_tensor.getrow(*token);
+		.map(|(position, token_id)| {
+			let mut row = wte_tensor.getrow(*token_id);
+			let token_embedding = wpe_tensor.getrow(position);
 			row.elementwise_add(&token_embedding);
 			row
 		})
