@@ -24,11 +24,13 @@ pub struct SafeTensors {
 #[serde(untagged)]
 pub enum SFMeta {
 	Tensor(TensorInfo),
+	#[allow(dead_code)]
 	Metadata(MetaFormat),
 }
 
 #[derive(Deserialize, Debug)]
 pub struct MetaFormat {
+	#[allow(dead_code)]
 	format: String,
 }
 

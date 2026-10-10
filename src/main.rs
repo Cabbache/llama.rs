@@ -9,6 +9,7 @@ use std::fs;
 use std::io;
 use std::io::BufRead;
 use std::io::Read;
+use std::io::Write;
 
 use serde::Deserialize;
 
@@ -80,7 +81,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 		println!("{:?}", tokens);
 
 		let mut wte_tensor = sf_file.load_tensor(WTE_KEY, &sf);
-		let mut wpe_tensor = sf_file.load_tensor(WPE_KEY, &sf);
+		let wpe_tensor = sf_file.load_tensor(WPE_KEY, &sf);
 
 		let mut embeddings: Tensor = tokens
 			.iter()
@@ -98,11 +99,15 @@ fn main() -> Result<(), Box<dyn Error>> {
 			.expect("???");
 
 		//process all attention blocks
-		for i in 0..=11 {
+		let num_blocks = 12;
+		for i in 0..num_blocks {
+			let bar = "=".repeat(i) + ">" + &" ".repeat(num_blocks - i);
+			print!("\r[{}] [{}/{}]", bar, i, num_blocks);
+			let _ = io::stdout().flush();
 			embeddings =
 				attention(embeddings, &config, &sf_file, &sf, i);
-			println!("{}", i);
 		}
+		println!();
 
 		let ln_f_weight = sf_file.load_tensor("ln_f.weight", &sf);
 		let ln_f_bias = sf_file.load_tensor("ln_f.bias", &sf);
@@ -127,8 +132,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 			.expect("no tokens");
 
 		let next = tokenizer.decode_token(next_token_id);
-		println!("{}", next);
 		prompt += &next;
+		println!("output: '{}'", prompt);
 	}
-	Ok(())
 }
