@@ -94,9 +94,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 		})
 		.expect("???");
 
-	//keep copy because we need it later unchanged
-	let input_block = embeddings.clone();
-
 	//process all attention blocks
 	for i in 0..=10 {
 		embeddings = attention(embeddings, &config, &sf_file, &sf, 0);
@@ -114,16 +111,16 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 	let lastrow = embeddings.getrow(embeddings.shape.0 - 1);
 	wte_tensor.transpose_mut();
-	println!("{:?}", wte_tensor.shape);
-	println!("{:?}", lastrow.shape);
 	let logits = matmul(&lastrow, &wte_tensor);
-	let (next_token_id, logit) = logits
+	println!("{:?}", logits);
+	let (next_token_id, _) = logits
 		.values
 		.iter()
 		.enumerate()
 		.max_by(|(_, a), (_, b)| a.partial_cmp(b).expect("f32 issue"))
 		.expect("no tokens");
 
-	println!("{}", next_token_id);
+	let next = tokenizer.decode_token(next_token_id);
+	println!("{}", next);
 	Ok(())
 }

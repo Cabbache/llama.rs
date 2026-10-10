@@ -1,13 +1,6 @@
 use core::f32::consts::{self, PI};
-use std::iter::zip;
 
 use crate::safetensors::Tensor;
-
-pub fn add_vectors_in_place(v1: &mut Vec<f32>, v2: &[f32]) {
-	for (x, y) in zip(v1.iter_mut(), v2.iter()) {
-		*x += y
-	}
-}
 
 pub fn slice_variance(v1: &[f32]) -> f32 {
 	let mean = slice_mean(v1);

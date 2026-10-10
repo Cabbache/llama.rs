@@ -30,21 +30,24 @@ fn bytes_to_unicode() -> HashMap<u8, char> {
 	zip(values, c).collect()
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct Model {
 	vocab: HashMap<String, usize>,
 	merges: Vec<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct TokenizerConfig {
 	model: Model,
 }
 
+#[derive(Debug)]
 pub struct Tokenizer {
 	config: TokenizerConfig,
 	bytelevel_mapping: HashMap<u8, char>,
+	inverse_bytelevel_mapping: HashMap<char, u8>,
 	mapped_merges: HashMap<String, usize>,
+	inverse_vocab: HashMap<usize, String>,
 }
 
 impl Tokenizer {
@@ -61,11 +64,40 @@ impl Tokenizer {
 			.map(|(i, s)| (s.clone(), i))
 			.collect();
 
+		let mapping = bytes_to_unicode();
+		let inverse: HashMap<char, u8> =
+			mapping.clone().into_iter().map(|(k, v)| (v, k)).collect();
+
+		let inverse_vocab: HashMap<usize, String> = tokenizer
+			.model
+			.vocab
+			.clone()
+			.into_iter()
+			.map(|(k, v)| (v, k))
+			.collect();
+
 		Ok(Self {
 			config: tokenizer,
-			bytelevel_mapping: bytes_to_unicode(),
+			bytelevel_mapping: mapping,
+			inverse_bytelevel_mapping: inverse,
 			mapped_merges,
+			inverse_vocab,
 		})
+	}
+
+	pub fn decode_token(&self, id: usize) -> String {
+		let encoded_token =
+			self.inverse_vocab.get(&id).expect("expected token");
+		let x: Vec<u8> = encoded_token
+			.chars()
+			.map(|c| {
+				*self
+					.inverse_bytelevel_mapping
+					.get(&c)
+					.expect("expected char")
+			})
+			.collect();
+		str::from_utf8(&x).unwrap().to_string()
 	}
 
 	fn apply_mapping(&self, prompt: &String) -> Vec<char> {
@@ -112,7 +144,6 @@ impl Tokenizer {
 	pub fn tokenize(&self, prompt: &String) -> Vec<usize> {
 		let mapped: Vec<char> = self.apply_mapping(prompt);
 		let tokens: Vec<String> = self.chars_to_string_tokens(&mapped);
-		//println!("{:?}", tokens);
 		let vector_tokens: Vec<usize> =
 			self.string_tokens_to_vectors(&tokens);
 		vector_tokens
