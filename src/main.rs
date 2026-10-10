@@ -75,6 +75,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let stdin = io::stdin();
 	let mut handle = stdin.lock();
 	handle.read_line(&mut prompt)?;
+	prompt = prompt.trim().to_string();
+	println!("'{}'", prompt);
 
 	let mut tokens = tokenizer.tokenize(&prompt);
 	println!("tokens: {:?}", tokens);
