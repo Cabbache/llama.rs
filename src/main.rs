@@ -96,7 +96,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 	//process all attention blocks
 	for i in 0..=11 {
-		embeddings = attention(embeddings, &config, &sf_file, &sf, 0);
+		embeddings = attention(embeddings, &config, &sf_file, &sf, i);
 		println!("{}", i);
 	}
 
