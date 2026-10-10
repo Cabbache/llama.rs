@@ -34,12 +34,12 @@ pub fn matmul(m1: &Tensor, m2: &Tensor) -> Tensor {
 	for row_idx in 0..m1.shape.0 {
 		for col_idx in 0..m2.shape.1 {
 			let mut total: f32 = 0.0;
-			for i in 0..m1.shape.0 {
-				let product = m1.values[row_idx * m1.shape.0 + i]
-					* m2.values[i * m2.shape.0 + col_idx];
+			for i in 0..m1.shape.1 {
+				let product = m1.values[row_idx * m1.shape.1 + i]
+					* m2.values[i * m2.shape.1 + col_idx];
 				total += product;
 			}
-			output.values[row_idx * m1.shape.0 + col_idx] = total;
+			output.values[row_idx * m2.shape.1 + col_idx] = total;
 		}
 	}
 	output
