@@ -116,7 +116,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 		let lastrow = embeddings.getrow(embeddings.shape.0 - 1);
 		wte_tensor.transpose_mut();
 		let logits = matmul(&lastrow, &wte_tensor);
-		println!("{:?}", logits);
+		//println!("{:?}", logits);
 		let (next_token_id, _) = logits
 			.values
 			.iter()
