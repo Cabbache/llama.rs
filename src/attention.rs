@@ -69,10 +69,10 @@ pub fn attention(
 	head_output.matmul_inplace(&h0_proj_weight);
 	head_output.rowwise_add(&h0_proj_bias);
 
-	let before_residual_1 = head_output.clone();
-
 	//residual connection 1
 	head_output.elementwise_add(&input_block);
+
+	let before_residual_1 = head_output.clone();
 
 	//layernorm 2
 	let h0_weight =
