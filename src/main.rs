@@ -103,7 +103,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 		let num_blocks = 12;
 		for i in 0..num_blocks {
 			let bar = "=".repeat(i) + ">" + &" ".repeat(num_blocks - i);
-			print!("\r[{}] [{}/{}]", bar, i, num_blocks);
+			print!("\r[{}] [{}/{}]", bar, i + 1, num_blocks);
 			let _ = io::stdout().flush();
 			embeddings =
 				attention(embeddings, &config, &mut sf_file, &sf, i);
