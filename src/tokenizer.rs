@@ -100,6 +100,12 @@ impl Tokenizer {
 		str::from_utf8(&x).unwrap().to_string()
 	}
 
+	pub fn decode_tokens(&self, tokens: &Vec<usize>) -> String {
+		let parts: Vec<String> =
+			tokens.iter().map(|id| self.decode_token(*id)).collect();
+		parts.join("")
+	}
+
 	fn apply_mapping(&self, prompt: &String) -> Vec<char> {
 		let prompt_bytes: Vec<u8> = prompt.as_bytes().to_vec();
 		let mapped_prompt: Vec<char> = prompt_bytes

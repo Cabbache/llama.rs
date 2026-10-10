@@ -76,10 +76,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 	let mut handle = stdin.lock();
 	handle.read_line(&mut prompt)?;
 
+	let mut tokens = tokenizer.tokenize(&prompt);
+	println!("tokens: {:?}", tokens);
 	loop {
-		let tokens = tokenizer.tokenize(&prompt);
-		println!("tokens: {:?}", tokens);
-
 		let mut wte_tensor = sf_file.load_tensor(WTE_KEY, &sf);
 		let wpe_tensor = sf_file.load_tensor(WPE_KEY, &sf);
 
@@ -131,8 +130,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 			})
 			.expect("no tokens");
 
-		let next = tokenizer.decode_token(next_token_id);
-		prompt += &next;
-		println!("output: '{}'", prompt);
+		tokens.push(next_token_id);
+		println!("output: '{}'", tokenizer.decode_tokens(&tokens));
 	}
 }
