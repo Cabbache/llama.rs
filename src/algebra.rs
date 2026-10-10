@@ -48,7 +48,7 @@ pub fn matmul(m1: &Tensor, m2: &Tensor) -> Tensor {
 pub fn tanh(x: f32) -> f32 {
 	if x > 5.0 {
 		return 1.0;
-	} else if x < 5.0 {
+	} else if x < -5.0 {
 		return -1.0;
 	} else {
 		let e = consts::E;
