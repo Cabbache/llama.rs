@@ -31,6 +31,8 @@ struct Cli {
 	config: String,
 	#[arg(short, long)]
 	dump: bool,
+	#[arg(long)]
+	disable_cache: bool,
 }
 
 #[derive(Deserialize, Debug)]
@@ -63,10 +65,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 		return Ok(());
 	}
 	let smeta: SFObject = serde_json::from_str(&jsonstring)?;
-	let sf_file: SafeTensors = SafeTensors {
-		jsonlen,
-		header: smeta,
-	};
+	let mut sf_file =
+		SafeTensors::new(jsonlen, smeta, args.disable_cache);
 
 	print!("> ");
 	let _ = io::Write::flush(&mut io::stdout());
@@ -78,7 +78,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 	loop {
 		let tokens = tokenizer.tokenize(&prompt);
-		println!("{:?}", tokens);
+		println!("tokens: {:?}", tokens);
 
 		let mut wte_tensor = sf_file.load_tensor(WTE_KEY, &sf);
 		let wpe_tensor = sf_file.load_tensor(WPE_KEY, &sf);
@@ -105,7 +105,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 			print!("\r[{}] [{}/{}]", bar, i, num_blocks);
 			let _ = io::stdout().flush();
 			embeddings =
-				attention(embeddings, &config, &sf_file, &sf, i);
+				attention(embeddings, &config, &mut sf_file, &sf, i);
 		}
 		println!();
 

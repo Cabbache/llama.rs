@@ -18,6 +18,8 @@ pub struct SFObject(HashMap<String, SFMeta>);
 pub struct SafeTensors {
 	pub jsonlen: u64,
 	pub header: SFObject,
+	pub disable_cache: bool,
+	cache: HashMap<String, Tensor>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -60,6 +62,19 @@ pub struct Head {
 }
 
 impl SafeTensors {
+	pub fn new(
+		jsonlen: u64,
+		header: SFObject,
+		disable_cache: bool,
+	) -> Self {
+		Self {
+			jsonlen,
+			header,
+			disable_cache,
+			cache: HashMap::new(),
+		}
+	}
+
 	pub fn get_tensor_info(&self, key: &str) -> &TensorInfo {
 		let result = match self.header.0.get(key) {
 			Some(SFMeta::Tensor(t)) => t,
@@ -69,9 +84,21 @@ impl SafeTensors {
 		result
 	}
 
-	pub fn load_tensor(&self, key: &str, sf: &std::fs::File) -> Tensor {
+	pub fn load_tensor(
+		&mut self,
+		key: &str,
+		sf: &std::fs::File,
+	) -> Tensor {
 		let info = self.get_tensor_info(key);
-		info.load_tensor(sf, self.jsonlen + 8)
+		if self.disable_cache {
+			info.load_tensor(sf, self.jsonlen + 8)
+		} else if let Some(t) = self.cache.get(key) {
+			t.clone()
+		} else {
+			let result = info.load_tensor(sf, self.jsonlen + 8);
+			self.cache.insert(key.to_string(), result.clone());
+			result
+		}
 	}
 }
 

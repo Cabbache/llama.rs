@@ -20,7 +20,7 @@ pub fn layernorm(
 pub fn attention(
 	mut input: Tensor,
 	config: &Config,
-	sf_file: &SafeTensors,
+	sf_file: &mut SafeTensors,
 	sf: &std::fs::File,
 	block_number: usize,
 ) -> Tensor {
