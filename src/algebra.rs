@@ -60,7 +60,7 @@ pub fn tanh(x: f32) -> f32 {
 
 pub fn gelu_new(x: f32) -> f32 {
 	let twoonpisqrt = (2.0 / PI).sqrt();
-	let tanh_input = x.powf(3f32) * 0.044715 * twoonpisqrt;
+	let tanh_input = (x + x.powf(3f32) * 0.044715) * twoonpisqrt;
 	let oneplus = 1.0 + tanh(tanh_input);
 	let out = 0.5 * x * oneplus;
 	out
